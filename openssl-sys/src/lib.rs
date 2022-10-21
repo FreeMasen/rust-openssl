@@ -96,7 +96,7 @@ pub fn init() {
     let init_options = OPENSSL_INIT_LOAD_SSL_STRINGS;
     #[cfg(ossl111b)]
     let init_options = OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_NO_ATEXIT;
-
+    println!("Initializing ossl110");
     INIT.call_once(|| unsafe {
         OPENSSL_init_ssl(init_options, ptr::null_mut());
     })
@@ -112,7 +112,7 @@ pub fn init() {
     static mut MUTEXES: *mut Vec<Mutex<()>> = 0 as *mut Vec<Mutex<()>>;
     static mut GUARDS: *mut Vec<Option<MutexGuard<'static, ()>>> =
         0 as *mut Vec<Option<MutexGuard<'static, ()>>>;
-
+    eprintln!("Initializing not ossl110");
     unsafe extern "C" fn locking_function(
         mode: c_int,
         n: c_int,
@@ -120,10 +120,12 @@ pub fn init() {
         _line: c_int,
     ) {
         let mutex = &(*MUTEXES)[n as usize];
-
+        
         if mode & ::CRYPTO_LOCK != 0 {
+            println!("R-LOCKING {n} {_file:?} {_line}");
             (*GUARDS)[n as usize] = Some(mutex.lock().unwrap());
         } else {
+            println!("R-UNLOCKING {n} {_file:?} {_line}");
             if let None = (*GUARDS)[n as usize].take() {
                 let _ = writeln!(
                     io::stderr(),
